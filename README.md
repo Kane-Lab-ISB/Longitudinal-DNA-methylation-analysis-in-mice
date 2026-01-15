@@ -1,6 +1,9 @@
 # Longitudinal-DNA-methylation-analysis-in-mice
 
-
+discovery_cohort_DNAm_data.RData contains methylation matrix data for the discovery cohort
+validation_cohort_DNAm_data.RData contains methylation matrix data for the validation cohort
+methy_prob_loci.RData contains probe loci matrix
+DNA_methylation_functions.R contains functions used in the analysis
 
 R version 4.4.2 (2024-10-31)
 Platform: aarch64-apple-darwin20
