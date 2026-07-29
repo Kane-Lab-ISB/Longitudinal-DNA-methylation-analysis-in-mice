@@ -1,19 +1,13 @@
 # Longitudinal-DNA-methylation-analysis-in-mice
+Raw DNAm sequencing data are deposited at in the Gene Expression Omnibus (GEO) under the accession number GSE316651
 
-discovery_cohort_DNAm_data.RData contains methylation matrix data for the discovery cohort
-validation_cohort_DNAm_data.RData contains methylation matrix data for the validation cohort
-methy_prob_loci.RData contains probe loci matrix
-DNA_methylation_functions.R contains functions used in the analysis
+Process data, discovery_cohort_DNAm_data.RData (contains methylation matrix data for the discovery cohort) and validation_cohort_DNAm_data.RData (contains methylation matrix data for the validation cohort), can be found at 10.5281/zenodo.21692964.
+
+methy_prob_loci.RData contains probe loci matrix, and DNA_methylation_functions.R contains functions used in the analysis
 
 R version 4.4.2 (2024-10-31)
 Platform: aarch64-apple-darwin20
 Running under: macOS 26.2
-
-Matrix products: default
-BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
-LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
-attached base packages:
-[1] parallel  stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
  [1] doParallel_1.0.17        iterators_1.0.14         foreach_1.5.2            randomForest_4.7-1.2     survminer_0.5.0         
