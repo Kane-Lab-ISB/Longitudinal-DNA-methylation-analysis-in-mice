@@ -23,31 +23,7 @@ get_fit2_res = function(metadata, design, values) {
   fit_ns = lmFit(counts_excl, design, block = metadata$Mouse.ID, correlation = corfit$consensus)
   fit2_ns = eBayes(fit_ns, trend = TRUE, robust = TRUE)
   return(fit2_ns)
-}
-
-tt_aging_lst = function(fit2) {
-  cont_mix = makeContrasts((sexfemale.X3 + sexmale.X3)/2 - (sexfemale.X2 + sexmale.X2)/2,
-                           (sexfemale.X2 + sexmale.X2)/2 - (sexfemale.X1 + sexmale.X1)/2,
-                           levels = colnames(coef(fit2)))
-  cont_female = makeContrasts(sexfemale.X2 - sexfemale.X1,
-                              sexfemale.X3 - sexfemale.X2,
-                              levels = colnames(coef(fit2)))
-  cont_male = makeContrasts(sexmale.X2 - sexmale.X1,
-                            sexmale.X3 - sexmale.X2,
-                            levels = colnames(coef(fit2)))
-  cont_sex = makeContrasts(sexfemale.X1 - sexmale.X1,
-                           sexfemale.X2 - sexmale.X2,
-                           sexfemale.X3 - sexmale.X3,
-                           levels = colnames(coef(fit2)))
-  cont_lst = list(cont_mix, cont_female, cont_male, cont_sex)
-  tt_global_lst = lapply(cont_lst, function(y) {
-    fit_cont = contrasts.fit(fit2, y)
-    fit_cont = eBayes(fit_cont)
-    tt_cont = topTable(fit_cont, n = Inf, adjust.method = "BH") 
-    return(tt_cont)
-  })
-  return(tt_global_lst)
-}
+} ## change this in the end
 
 get_dmr_modify_DMRcate = function(cpg_fc) {
   C = 2
@@ -150,112 +126,6 @@ get_dmr_modify_DMRcate = function(cpg_fc) {
   return(results)
 }
 
-methy_prob_loci = read.csv(file = "~/Desktop/DNA methylation/MouseMethylation-12v1-0_A2.csv")
-
-get_DMRs = function(values, tt) {
-  cpg_loci = methy_prob_loci %>%
-    filter(IlmnID %in% colnames(values)) %>%
-    mutate(chromo = paste0("chr", CHR))
-  cpg_fc = merge(tt %>% mutate(IlmnID = rownames(.)), cpg_loci, by = "IlmnID")
-  DMR_res = get_dmr_modify_DMRcate(cpg_fc) %>%
-    filter(no.cpgs >= 5 & Stouffer < 0.05)
-  return(DMR_res)
-}
-
-manhattan_plot_ewas = function(tt_tbl) {
-  cpg_pos = merge(tt_tbl %>% mutate(IlmnID = rownames(.)),
-                  cpg_loci,
-                  by = "IlmnID") %>% 
-    as.data.frame() %>%
-    dplyr::select(IlmnID, chromo, MAPINFO, P.Value, adj.P.Val)
-  cpg_pos_cumpos = merge(cpg_pos, chromo_cumpos, by = "chromo") %>%
-    mutate(bpcum = MAPINFO + position_x) %>%
-    dplyr::select(chromo, IlmnID, P.Value, adj.P.Val, MAPINFO, position_x, bpcum)
-  cpg_pos_cumpos$chromo = factor(cpg_pos_cumpos$chromo, levels = chrOrder_DNAm)
-  nondmp_pos_cumpos = cpg_pos_cumpos %>% filter(adj.P.Val >= 0.05)
-  dmp_pos_cumpos = cpg_pos_cumpos %>% filter(adj.P.Val < 0.05)
-  x_axis_ticks = cpg_pos_cumpos %>%
-    dplyr::group_by(chromo) %>%
-    dplyr::summarise(center = (max(bpcum) + min(bpcum))/2)
-  plot = ggplot() +
-    geom_point(data = nondmp_pos_cumpos,
-               aes(x = bpcum,
-                   y = -log10(P.Value),
-                   color = as.factor(chromo)), size = 0.2) + 
-    scale_color_manual(values = rep(c("grey65", "grey80"), 21)) +
-    guides(color = FALSE) + 
-    new_scale_color() + 
-    geom_point(data = dmp_pos_cumpos,
-               aes(x = bpcum,
-                   y = -log10(P.Value), 
-                   color = as.factor(chromo)), size = 0.4) + 
-    scale_color_manual(values = rep(c("#004488", "#44AA99"), 22)) + 
-    scale_x_continuous(label = x_axis_ticks$chromo, breaks = x_axis_ticks$center) +
-    labs(x = "", y = "-log10(p-value)", color = "") +
-    guides(color = FALSE) + 
-    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1, size = 12, face = "bold"))
-  return(plot)
-}
-
-manhattan_plot_dmr = function(tt_tbl, dmrs_tbl, loci_dmrs_tbl) {
-  cpg_pos = merge(tt_tbl %>% mutate(IlmnID = rownames(.)),
-                  cpg_loci,
-                  by = "IlmnID") %>% 
-    as.data.frame() %>%
-    dplyr::select(IlmnID, chromo, MAPINFO, P.Value, adj.P.Val)
-  cpg_pos_cumpos = merge(cpg_pos, chromo_cumpos, by = "chromo") %>%
-    mutate(bpcum = MAPINFO + position_x) %>%
-    dplyr::select(chromo, IlmnID, P.Value, adj.P.Val, MAPINFO, position_x, bpcum)
-  cpg_pos_cumpos$chromo = factor(cpg_pos_cumpos$chromo, levels = chrOrder_DNAm)
-  dmr_pos = dmrs_tbl %>%
-    mutate(MAPINFO = (start + end)/2,
-           IlmnID = coord,
-           chromo = chr,
-           adj.P.Val = Stouffer) %>%
-    dplyr::select(IlmnID, chromo, MAPINFO, adj.P.Val) %>%
-    mutate(type = rep("dmr", nrow(.)))
-  dmr_pos_cumpos = merge(dmr_pos, chromo_cumpos, by = "chromo") %>%
-    mutate(bpcum = MAPINFO + position_x)
-  nondmp_pos_cumpos = cpg_pos_cumpos %>% filter(adj.P.Val >= 0.05) %>% filter(IlmnID %in% loci_dmrs_tbl$IlmnID)
-  dmp_pos_cumpos = cpg_pos_cumpos %>% filter(adj.P.Val < 0.05) %>% filter(IlmnID %in% loci_dmrs_tbl$IlmnID)
-  x_axis_ticks = cpg_pos_cumpos %>%
-    dplyr::group_by(chromo) %>%
-    dplyr::summarise(center = (max(bpcum) + min(bpcum))/2)
-  plot = ggplot() +
-    geom_point(data = nondmp_pos_cumpos,
-               aes(x = bpcum,
-                   y = -log10(P.Value),
-                   color = as.factor(chromo)), size = 0.2) + 
-    scale_color_manual(values = rep(c("grey65", "grey80"), 21)) +
-    guides(color = FALSE) + 
-    new_scale_color() + 
-    geom_point(data = dmp_pos_cumpos,
-               aes(x = bpcum,
-                   y = -log10(P.Value), 
-                   color = as.factor(chromo)), size = 0.4) + 
-    scale_color_manual(values = rep(c("#BADE28FF", "#5BC863FF"), 22)) + 
-    geom_point(data = dmr_pos_cumpos,
-               aes(x = bpcum,
-                   y = -log10(adj.P.Val)),
-               color = "#443983FF", shape = 2) +
-    scale_x_continuous(label = x_axis_ticks$chromo, breaks = x_axis_ticks$center) +
-    labs(x = "", y = "-log10(p-value)", color = "") +
-    guides(color = FALSE) + 
-    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1, size = 12, face = "bold"))
-  return(plot)
-}
-
-
-chrOrder_DNAm = c(paste0("chr", 1:19), "chrX", "chrY", "chrMT")
-cpg_loci$chromo = factor(cpg_loci$chromo, levels = chrOrder_DNAm)
-chromo_cumpos = cpg_loci %>%
-  group_by(chromo) %>%
-  dplyr::summarise(chr_len = max(MAPINFO)) %>%
-  mutate(chr_len = as.numeric(chr_len)) %>%
-  mutate(position_x = cumsum(chr_len) - chr_len) %>%
-  dplyr::select(-chr_len) %>%
-  as.data.frame()
-
 select_dmp_for_dmr = function(dmr_lst) {
   all_dmp = lapply(1:nrow(dmr_lst), function(x) {
     chr_dmr = dmr_lst[x, ]$chr
@@ -290,39 +160,6 @@ prob_enriched_path = function(cpg_list) {
   return(result)
 }
 
-enriched_gene_plot = function(gene_output) {
-  top25 = gene_output %>%  
-    dplyr::slice(1:20) %>% 
-    mutate(ratio = overlap/nD) %>% 
-    arrange(desc(p.value))
-  top25$gene_name = factor(top25$gene_name, levels = top25$gene_name)
-  plot = ggplot(data = top25,
-                aes(x = -log10.p.value,
-                    y = gene_name,
-                    fill = ratio)) +
-    geom_bar(stat = "identity", width = 0.75) +
-    scale_fill_viridis() +
-    labs(y = "") +
-    theme(axis.text.y = element_text(size = 9, face = "bold.italic"))
-  return(plot)
-}
-
-kegg_path_plot = function(path_output) {
-  top20 = path_output %>% arrange(p_value) %>% 
-    dplyr::slice(1:20) %>% arrange(desc(p_value))
-  top20$term_name = factor(top20$term_name, levels = top20$term_name)
-  plot = ggplot(data = top20,
-                aes(x = intersection_size,
-                    y = term_name,
-                    color = -log10(p_value),
-                    size = prop)) +
-    geom_point()+
-    scale_color_viridis(direction = -1) +
-    theme(axis.text.y = element_text(size = 8, face = "bold")) +
-    labs(y = "")
-  return(plot)
-}
-
 test_rdrop = function(loci_dmr, expr_tbl) {
   rdrop_tbl = lapply(unique(loci_dmr$dmr), function(x) {
     single_dmr = loci_dmr %>%
@@ -342,19 +179,6 @@ test_rdrop = function(loci_dmr, expr_tbl) {
     as.data.frame()
   return(rdrop_tbl)  
 } 
-
-get_coeff = function(fea_lst, lmer_lst) { # get the coefficient table for association study res
-  coeff_tbl_merge = sapply(1:length(fea_lst), function(x) {
-    coeff_tbl = summary(lmer_lst[[x]])$coefficients
-    return(c(coeff_tbl[2, 1], coeff_tbl[2, 2], coeff_tbl[2, 5]))
-  }) %>% t() %>% 
-    as.data.frame() %>%
-    mutate(cpg = unlist(fea_lst)) %>%
-    `colnames<-`(c("coeff", "se", "p", "cpg")) %>%
-    mutate(adjp = p.adjust(p, method = "fdr")) %>% 
-    filter(adjp < 0.05)
-  return(coeff_tbl_merge)
-}
 
 prepostfuture_data_merge = function(tp_group, assoc_df, fea_lst) { #function to get time point pair
   merge_dat = lapply(1:nrow(tp_group), function(x) {
@@ -417,25 +241,6 @@ get_prepostfuture_dat = function(pre, post, future, assoc_df, fea_lst) {#functio
     `colnames<-`(paste0("delta_", fea_lst))
   prepost_data_out = cbind(prepost_data, deltaMeth_df) %>%
     as.data.frame()
-}
-
-get_freq_dmr = function(dmr_fic_df, dmr_fif_df, dmr_deltafi_df,
-                        deltadmr_fic_df, deltadmr_fif_df, deltadmr_deltafi_df) {
-  dmr_assoc_list = Reduce(union, list(dmr_fic_df$dmr,
-                                      dmr_fif_df$dmr,
-                                      dmr_deltafi_df$dmr,
-                                      deltadmr_fic_df$dmr,
-                                      deltadmr_fif_df$dmr,
-                                      deltadmr_deltafi_df$dmr))
-  dmr_assoc_freq = data.frame(dmr_fic = ifelse(dmr_assoc_list %in% dmr_fic_df$dmr, 1, 0),
-                              dmr_fif = ifelse(dmr_assoc_list %in% dmr_fif_df$dmr, 1, 0),
-                              dmr_deltafi = ifelse(dmr_assoc_list %in% dmr_deltafi_df$dmr, 1, 0),
-                              deltadmr_fic = ifelse(dmr_assoc_list %in% deltadmr_fic_df$dmr, 1, 0),
-                              deltadmr_fif = ifelse(dmr_assoc_list %in% deltadmr_fif_df$dmr, 1, 0),
-                              deltadmr_deltafi = ifelse(dmr_assoc_list %in% deltadmr_deltafi_df$dmr, 1, 0)) %>%
-    mutate(num = rowSums(.),
-           dmr = dmr_assoc_list) %>%
-    filter(num >= 2) 
 }
 
 dmr_assoc_frailty_outcome = function(frail_assoc_df, frail_prepost_assoc_df, frail_prepostfuture_assoc_df) {
