@@ -70,10 +70,10 @@ library(ggVennDiagram)
 
 # 1. Import data; global methylation pattern and pca
 ```{r}
-load("~/Desktop/DNA methylation/discovery_cohort_DNAm_data.RData")
-load("~/Desktop/DNA methylation/validation_cohort_DNAm_data.RData")
-load("~/Desktop/DNA methylation/methy_prob_loci.RData") # prob loci
-source("~/Desktop/DNA methylation/DNA_methylation_functions.R") # functions for this analysis
+load("~/DNA methylation/discovery_cohort_DNAm_data.RData")
+load("~/DNA methylation/validation_cohort_DNAm_data.RData")
+load("~/DNA methylation/methy_prob_loci.RData") # prob loci
+source("~/DNA methylation/DNA_methylation_functions.R") # functions for this analysis
 beta2m = function(x) {log2(x/(1-x))}
 methy_dat_dis_M = methy_dat_dis %>% apply(., 2, beta2m) %>% as.data.frame() #convert to Mvalues
 methy_dat_val_M = methy_dat_val %>% apply(., 2, beta2m) %>% as.data.frame()
